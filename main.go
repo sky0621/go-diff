@@ -14,8 +14,24 @@
 
 package main
 
-import "github.com/sky0621/go-diff/cmd"
+import (
+	"flag"
 
+	"github.com/sky0621/go-diff/cmd"
+	"github.com/spf13/viper"
+)
+
+// TODO 機能実現スピード最優先での実装なので要リファクタ
 func main() {
 	cmd.Execute()
+}
+
+func init() {
+	cfg := flag.String("f", "config.toml", "Config File")
+	flag.Parse()
+
+	viper.SetConfigFile(*cfg)
+	if err := viper.ReadInConfig(); err != nil {
+		panic(err)
+	}
 }
