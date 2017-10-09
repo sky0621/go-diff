@@ -8,8 +8,11 @@ import (
 
 	"github.com/spf13/viper"
 
+	"strings"
+
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 // TODO 機能実現スピード最優先での実装なので要リファクタ
@@ -25,7 +28,33 @@ func ExecCheck() {
 
 			save(url, source)
 		} else {
-			fmt.Println("Yes prev.")
+			prvSrcs := strings.Split(prev.Source, "\n")
+			aprvSrcs := []string{}
+			for _, prvSrc := range prvSrcs {
+				tprvSrc := strings.TrimSpace(prvSrc)
+				if tprvSrc != "" {
+					aprvSrcs = append(aprvSrcs, tprvSrc)
+				}
+			}
+
+			nowSrcs := strings.Split(source, "\n")
+			anowSrcs := []string{}
+			for _, nowSrc := range nowSrcs {
+				tnowSrc := strings.TrimSpace(nowSrc)
+				if tnowSrc != "" {
+					anowSrcs = append(anowSrcs, tnowSrc)
+				}
+			}
+
+			if len(aprvSrcs) > len(anowSrcs) {
+				for idx, aprvSrc := range aprvSrcs {
+					fmt.Println(lineDiff(aprvSrc, anowSrcs[idx]))
+				}
+			} else {
+				for idx, anowSrc := range anowSrcs {
+					fmt.Println(lineDiff(aprvSrcs[idx], anowSrc))
+				}
+			}
 		}
 	}
 }
@@ -68,4 +97,12 @@ func save(url, source string) {
 	defer db.Close()
 
 	db.Create(&TargetUrl{URL: url, Source: source})
+}
+
+func lineDiff(src1, src2 string) []diffmatchpatch.Diff {
+	dmp := diffmatchpatch.New()
+	a, b, c := dmp.DiffLinesToChars(src1, src2)
+	diffs := dmp.DiffMain(a, b, false)
+	result := dmp.DiffCharsToLines(diffs, c)
+	return result
 }
