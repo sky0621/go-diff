@@ -22,9 +22,9 @@ func ExecCheck() {
 		source := crawl(url)
 		prev := prevSearch(url)
 		if prev.ID < 1 {
-			fmt.Println("=============================")
-			fmt.Println("No prev. Just Save.")
-			fmt.Println("=============================")
+			fmt.Println("==========================================")
+			fmt.Println("No Previous Record, so Just Save.")
+			fmt.Println("==========================================")
 
 			save(url, source)
 		} else {
