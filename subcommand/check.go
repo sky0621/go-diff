@@ -13,34 +13,63 @@ import (
 	"os/exec"
 
 	"path/filepath"
-	//"github.com/jinzhu/gorm"
-	//_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
 
 // TODO 機能実現スピード最優先での実装なので要リファクタ
 func ExecCheck() {
-	url := viper.GetString("url")
+	source := crawl(viper.GetString(static.TargetURL))
 
-	source := crawl(url)
+	err := ioutil.WriteFile(static.StorePath+viper.GetString(static.SaveFile), []byte(source), os.ModePerm)
+	if err != nil {
+		fmt.Printf("[check][01]%#v", err.Error())
+		return
+	}
 
-	//prevs := prevSearch(url)
-	//if len(prevs) == 0 {
-	//	fmt.Println("==========================================")
-	//	fmt.Println("No Previous Record, so Just Save.")
-	//	fmt.Println("==========================================")
-	//
-	//	save(source)
-	//	return
-	//}
+	prevDir, err := filepath.Abs(".")
+	if err != nil {
+		fmt.Printf("[check][02]%#v", err.Error())
+		return
+	}
+	defer func() {
+		err = os.Chdir(prevDir)
+		if err != nil {
+			fmt.Printf("[check][03]%#v", err.Error())
+			return
+		}
+	}()
 
-	diffStr := save2(url, source)
-	fmt.Println(diffStr)
+	err = os.Chdir(static.StorePath)
+	if err != nil {
+		fmt.Printf("[check][04]%#v", err.Error())
+		return
+	}
+
+	gitaddCmd := exec.Command("git", "add", viper.GetString(static.SaveFile))
+	err = gitaddCmd.Run()
+	if err != nil {
+		fmt.Printf("[check][05]%#v", err.Error())
+		return
+	}
+	gitcommitCmd := exec.Command("git", "commit", "-m", "update")
+	err = gitcommitCmd.Run()
+	if err != nil {
+		fmt.Printf("[check][06]%#v", err.Error())
+		return
+	}
+
+	diffRes, err := exec.Command("git", "diff", "HEAD^").Output()
+	if err != nil {
+		fmt.Printf("[check][07]%#v", err.Error())
+		return
+	}
+
+	fmt.Println(string(diffRes))
 }
 
 func crawl(url string) string {
 	res, err := http.Get(url)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("[crawl][01]%#v", err)
 		return ""
 	}
 	defer func() {
@@ -51,119 +80,8 @@ func crawl(url string) string {
 
 	baBody, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("[crawl][02]%#v", err)
 		return ""
 	}
 	return string(baBody)
-}
-
-//func prevSearch(url string) []*TargetUrl {
-//	db, err := gorm.Open("sqlite3", static.Storage)
-//	if err != nil {
-//		fmt.Println(err)
-//		return nil
-//	}
-//	defer db.Close()
-//
-//	outs := []*TargetUrl{}
-//	db.Where("url = ?", url).Find(outs)
-//	return outs
-//}
-//
-//func save(source string) {
-//	err := ioutil.WriteFile(static.StorePath+viper.GetString("title"), []byte(source), os.ModePerm)
-//	if err != nil {
-//		fmt.Println(err)
-//		return
-//	}
-//
-//	prevDir, err := filepath.Abs(".")
-//	if err != nil {
-//		fmt.Println(err)
-//		return
-//	}
-//	defer func() {
-//		err = os.Chdir(prevDir)
-//		if err != nil {
-//			fmt.Println(err)
-//			return
-//		}
-//	}()
-//
-//	err = os.Chdir(static.StorePath)
-//	if err != nil {
-//		fmt.Println(err)
-//		return
-//	}
-//
-//	gitaddCmd := exec.Command("git", "add", viper.GetString("title"))
-//	err = gitaddCmd.Run()
-//	if err != nil {
-//		fmt.Println(err)
-//		return
-//	}
-//	gitcommitCmd := exec.Command("git", "commit", "-m", "update")
-//	err = gitcommitCmd.Run()
-//	if err != nil {
-//		fmt.Println(err)
-//		return
-//	}
-//}
-
-func save2(url, source string) string {
-	err := ioutil.WriteFile(static.StorePath+viper.GetString("title"), []byte(source), os.ModePerm)
-	if err != nil {
-		fmt.Println(err)
-		return ""
-	}
-
-	prevDir, err := filepath.Abs(".")
-	if err != nil {
-		fmt.Println(err)
-		return ""
-	}
-	defer func() {
-		err = os.Chdir(prevDir)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-	}()
-
-	err = os.Chdir(static.StorePath)
-	if err != nil {
-		fmt.Println(err)
-		return ""
-	}
-
-	gitaddCmd := exec.Command("git", "add", viper.GetString("title"))
-	err = gitaddCmd.Run()
-	if err != nil {
-		fmt.Println(err)
-		return ""
-	}
-	gitcommitCmd := exec.Command("git", "commit", "-m", "update")
-	err = gitcommitCmd.Run()
-	if err != nil {
-		fmt.Println(err)
-		return ""
-	}
-
-	diffRes, err := exec.Command("git", "diff", "HEAD^").Output()
-	if err != nil {
-		fmt.Println(err)
-		return ""
-	}
-	fmt.Println(string(diffRes))
-
-	//db, err := gorm.Open("sqlite3", static.Storage)
-	//if err != nil {
-	//	fmt.Println(err)
-	//	return ""
-	//}
-	//defer db.Close()
-	//
-	//db.Create(&TargetUrl{URL: url, Source: string(diffRes)})
-
-	return string(diffRes)
 }

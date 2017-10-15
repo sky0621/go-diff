@@ -1,2 +1,2 @@
-title = "lineapi.txt"
-url = "https://developers.line.me/ja/docs/messaging-api/reference/"
+target_url = "https://developers.line.me/ja/docs/messaging-api/reference/"
+save_file = "lineapi.txt"

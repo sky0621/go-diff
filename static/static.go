@@ -2,6 +2,6 @@ package static
 
 const (
 	StorePath = "./store/"
-	Storage   = StorePath + "data.db"
-	SplitSep  = "\n"
+	TargetURL = "target_url"
+	SaveFile  = "save_file"
 )
