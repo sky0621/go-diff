@@ -1,2 +1,2 @@
-urls = ["https://developers.line.me/ja/docs/messaging-api/reference/"]
-gitpath = "./store/"
+title = "lineapi.txt"
+url = "https://developers.line.me/ja/docs/messaging-api/reference/"

@@ -3,66 +3,45 @@ package subcommand
 import (
 	"io/ioutil"
 	"net/http"
+	"os"
 
 	"fmt"
 
+	"github.com/sky0621/go-diff/static"
 	"github.com/spf13/viper"
 
-	"strings"
+	"os/exec"
 
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
-	"github.com/sergi/go-diff/diffmatchpatch"
+	"path/filepath"
+	//"github.com/jinzhu/gorm"
+	//_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
 
 // TODO 機能実現スピード最優先での実装なので要リファクタ
 func ExecCheck() {
-	urls := viper.GetStringSlice("urls")
-	for _, url := range urls {
-		source := crawl(url)
-		prev := prevSearch(url)
-		if prev.ID < 1 {
-			fmt.Println("==========================================")
-			fmt.Println("No Previous Record, so Just Save.")
-			fmt.Println("==========================================")
+	url := viper.GetString("url")
 
-			save(url, source)
-		} else {
-			prvSrcs := strings.Split(prev.Source, "\n")
-			aprvSrcs := []string{}
-			for _, prvSrc := range prvSrcs {
-				tprvSrc := strings.TrimSpace(prvSrc)
-				if tprvSrc != "" {
-					aprvSrcs = append(aprvSrcs, tprvSrc)
-				}
-			}
+	source := crawl(url)
 
-			nowSrcs := strings.Split(source, "\n")
-			anowSrcs := []string{}
-			for _, nowSrc := range nowSrcs {
-				tnowSrc := strings.TrimSpace(nowSrc)
-				if tnowSrc != "" {
-					anowSrcs = append(anowSrcs, tnowSrc)
-				}
-			}
+	//prevs := prevSearch(url)
+	//if len(prevs) == 0 {
+	//	fmt.Println("==========================================")
+	//	fmt.Println("No Previous Record, so Just Save.")
+	//	fmt.Println("==========================================")
+	//
+	//	save(source)
+	//	return
+	//}
 
-			if len(aprvSrcs) > len(anowSrcs) {
-				for idx, aprvSrc := range aprvSrcs {
-					fmt.Println(lineDiff(aprvSrc, anowSrcs[idx]))
-				}
-			} else {
-				for idx, anowSrc := range anowSrcs {
-					fmt.Println(lineDiff(aprvSrcs[idx], anowSrc))
-				}
-			}
-		}
-	}
+	diffStr := save2(url, source)
+	fmt.Println(diffStr)
 }
 
 func crawl(url string) string {
 	res, err := http.Get(url)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		return ""
 	}
 	defer func() {
 		if res != nil {
@@ -72,37 +51,119 @@ func crawl(url string) string {
 
 	baBody, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		return ""
 	}
 	return string(baBody)
 }
 
-func prevSearch(url string) *TargetUrl {
-	db, err := gorm.Open("sqlite3", "./data.db")
+//func prevSearch(url string) []*TargetUrl {
+//	db, err := gorm.Open("sqlite3", static.Storage)
+//	if err != nil {
+//		fmt.Println(err)
+//		return nil
+//	}
+//	defer db.Close()
+//
+//	outs := []*TargetUrl{}
+//	db.Where("url = ?", url).Find(outs)
+//	return outs
+//}
+//
+//func save(source string) {
+//	err := ioutil.WriteFile(static.StorePath+viper.GetString("title"), []byte(source), os.ModePerm)
+//	if err != nil {
+//		fmt.Println(err)
+//		return
+//	}
+//
+//	prevDir, err := filepath.Abs(".")
+//	if err != nil {
+//		fmt.Println(err)
+//		return
+//	}
+//	defer func() {
+//		err = os.Chdir(prevDir)
+//		if err != nil {
+//			fmt.Println(err)
+//			return
+//		}
+//	}()
+//
+//	err = os.Chdir(static.StorePath)
+//	if err != nil {
+//		fmt.Println(err)
+//		return
+//	}
+//
+//	gitaddCmd := exec.Command("git", "add", viper.GetString("title"))
+//	err = gitaddCmd.Run()
+//	if err != nil {
+//		fmt.Println(err)
+//		return
+//	}
+//	gitcommitCmd := exec.Command("git", "commit", "-m", "update")
+//	err = gitcommitCmd.Run()
+//	if err != nil {
+//		fmt.Println(err)
+//		return
+//	}
+//}
+
+func save2(url, source string) string {
+	err := ioutil.WriteFile(static.StorePath+viper.GetString("title"), []byte(source), os.ModePerm)
 	if err != nil {
-		panic("failed to connect database")
+		fmt.Println(err)
+		return ""
 	}
-	defer db.Close()
 
-	out := &TargetUrl{}
-	db.Where("url = ?", url).Find(out)
-	return out
-}
-
-func save(url, source string) {
-	db, err := gorm.Open("sqlite3", "./data.db")
+	prevDir, err := filepath.Abs(".")
 	if err != nil {
-		panic("failed to connect database")
+		fmt.Println(err)
+		return ""
 	}
-	defer db.Close()
+	defer func() {
+		err = os.Chdir(prevDir)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+	}()
 
-	db.Create(&TargetUrl{URL: url, Source: source})
-}
+	err = os.Chdir(static.StorePath)
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
 
-func lineDiff(src1, src2 string) []diffmatchpatch.Diff {
-	dmp := diffmatchpatch.New()
-	a, b, c := dmp.DiffLinesToChars(src1, src2)
-	diffs := dmp.DiffMain(a, b, false)
-	result := dmp.DiffCharsToLines(diffs, c)
-	return result
+	gitaddCmd := exec.Command("git", "add", viper.GetString("title"))
+	err = gitaddCmd.Run()
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+	gitcommitCmd := exec.Command("git", "commit", "-m", "update")
+	err = gitcommitCmd.Run()
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+
+	diffRes, err := exec.Command("git", "diff", "HEAD^").Output()
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+	fmt.Println(string(diffRes))
+
+	//db, err := gorm.Open("sqlite3", static.Storage)
+	//if err != nil {
+	//	fmt.Println(err)
+	//	return ""
+	//}
+	//defer db.Close()
+	//
+	//db.Create(&TargetUrl{URL: url, Source: string(diffRes)})
+
+	return string(diffRes)
 }

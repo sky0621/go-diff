@@ -1,5 +1,11 @@
 # go-diff
 
+## 前提
+
+・go version 1.7 で動作確認
+・glide インストールが必要
+・git 2.10 で動作確認
+
 ## 初期化
 
 go run main.go init
